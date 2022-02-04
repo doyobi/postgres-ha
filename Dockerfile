@@ -1,5 +1,6 @@
 ARG PG_VERSION=14.1
 ARG VERSION=custom
+ARG TIMESCALEDB_VERSION=2.5.1
 
 FROM golang:1.16 as flyutil
 ARG VERSION
@@ -22,6 +23,17 @@ FROM flyio/stolon:b6b9aaf  as stolon
 
 FROM wrouesnel/postgres_exporter:latest AS postgres_exporter
 
+FROM postgres:${PG_VERSION} AS timescaledb-ext
+ARG TIMESCALEDB_VERSION
+WORKDIR /home
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    ca-certificates git make cmake gcc libkrb5-dev postgresql-server-dev-${PG_MAJOR} && \
+    git clone -b $TIMESCALEDB_VERSION https://github.com/timescale/timescaledb.git && \
+    cd timescaledb && \
+    ./bootstrap && \
+    cd build && make && \
+    make install
+
 FROM postgres:${PG_VERSION}
 ARG VERSION 
 ARG POSTGIS_MAJOR=3
@@ -38,6 +50,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
 
 COPY --from=stolon /go/src/app/bin/* /usr/local/bin/
 COPY --from=postgres_exporter /postgres_exporter /usr/local/bin/
+COPY --from=timescaledb-ext /usr/share/postgresql/${PG_MAJOR}/extension/timescaledb* /usr/share/postgresql/${PG_MAJOR}/extension/
+COPY --from=timescaledb-ext /usr/lib/postgresql/${PG_MAJOR}/lib/timescaledb* /usr/lib/postgresql/${PG_MAJOR}/lib/
 
 ADD /scripts/* /fly/
 ADD /config/* /fly/

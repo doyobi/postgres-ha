@@ -104,6 +104,7 @@ func InitConfig(filename string) (*Config, error) {
 			"max_worker_processes":            "8",
 			"max_parallel_workers":            "8",
 			"max_parallel_workers_per_gather": "2",
+			"shared_preload_libraries":        "timescaledb",
 		},
 	}
 
